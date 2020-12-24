@@ -1,5 +1,9 @@
 package org.step.jdbc;
 
+import org.step.jdbc.pool.ConnectionPool;
+import org.step.jdbc.pool.ConnectionPoolImpl;
+import org.step.model.User;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -10,11 +14,7 @@ import java.util.List;
 
 public class UserDao {
 
-    public final ConnectionPool connectionPool;
-
-    public UserDao(ConnectionPool connectionPool) {
-        this.connectionPool = connectionPool;
-    }
+    public final ConnectionPool connectionPool = ConnectionPoolImpl.getInstance();
 
     public Integer saveUser(User user) throws InterruptedException {
         Connection connection = connectionPool.getConnection();
@@ -56,5 +56,27 @@ public class UserDao {
             connectionPool.returnConnection(connection);
         }
         return Collections.emptyList();
+    }
+
+    public User login(String username) throws InterruptedException {
+        Connection connection = connectionPool.getConnection();
+
+        try {
+            PreparedStatement preparedStatement = connection.prepareStatement(
+                    "SELECT ID, NAME FROM USERS WHERE NAME=?");
+
+            preparedStatement.setString(1, username);
+
+            ResultSet resultSet = preparedStatement.executeQuery();
+
+            if (resultSet.next()) {
+                return new User(resultSet.getInt("ID"), resultSet.getString("NAME"));
+            }
+        } catch (Exception e) {
+            throw new RuntimeException();
+        } finally {
+            connectionPool.returnConnection(connection);
+        }
+        return null;
     }
 }

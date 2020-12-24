@@ -1,15 +1,19 @@
 package org.step.jdbc;
 
+import org.step.jdbc.pool.ConnectionPool;
+import org.step.jdbc.pool.ConnectionPoolImpl;
+import org.step.model.Post;
+
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 
 public class PostDao {
 
-    private final ConnectionPool connectionPool;
-
-    public PostDao(ConnectionPool connectionPool) {
-        this.connectionPool = connectionPool;
-    }
+    private final ConnectionPool connectionPool = ConnectionPoolImpl.getInstance();
 
     public void savePost(Post post) throws InterruptedException {
         Connection connection = connectionPool.getConnection();
@@ -24,9 +28,32 @@ public class PostDao {
 
             preparedStatement.executeUpdate();
         } catch (Exception e) {
-            System.out.println(e.getLocalizedMessage());
+            throw new RuntimeException();
         } finally {
             connectionPool.returnConnection(connection);
         }
+    }
+
+    public List<Post> findAll() throws InterruptedException {
+        Connection connection = connectionPool.getConnection();
+
+        try {
+            Statement statement = connection.createStatement();
+
+            ResultSet resultSet = statement.executeQuery("SELECT ID, NAME, DESCRIPTION FROM POSTS");
+
+            List<Post> postList = new ArrayList<>();
+
+            while (resultSet.next()) {
+                Post post = new Post(resultSet.getInt("ID"), resultSet.getString("NAME"), resultSet.getString("DESCRIPTION"));
+                postList.add(post);
+            }
+            return postList;
+        } catch (Exception e) {
+            System.out.println("Exception: " + e.getLocalizedMessage());
+        } finally {
+            connectionPool.returnConnection(connection);
+        }
+        return null;
     }
 }
